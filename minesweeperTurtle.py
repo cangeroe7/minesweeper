@@ -76,17 +76,44 @@ def create_visual_board():
     setup(width=1., height=1.)
     window.tracer(0)
 
+    # board and header borders
     make_rectangle(-610, -360, 1220, 660, "black")
     make_rectangle(-600, -350, 1200, 640, "lightgray")
     make_rectangle(-610, 310, 1220, 120, "black")
     make_rectangle(-605, 315, 1210, 110, "#C0C0C0")
-    make_rectangle(-103, 328, 200, 70)
-    make_rectangle(-97, 322, 200, 70)
-    make_rectangle()
+    
+    # cell's revealed border
+    make_rectangle(-553, 327, 206, 86, "black")
+    make_rectangle(-550, 330, 200, 80, "lightgray")
+    
+    # new game border    
+    make_rectangle(-148, 337, 296, 66, "black")
+    make_rectangle(-145, 340, 290, 60, "lightgray")
 
+    # time border
+    make_rectangle(553, 327, -206, 86, "black")
+    make_rectangle(550, 330, -200, 80, "lightgray")
 
-
+    # set starting values
     pen.color("black")
+    pen.setpos(0, 338)
+    pen.write("New Game", font=("Courier", 40), align="center")
+    timer_text.setpos(450, 322)
+    timer_text.write(0, font=("Courier", 60), align="center")
+    cell_opened_text.setpos(-450, 322)
+    cell_opened_text.write(381, font=("Courier", 60), align="center")
+
+#             moves,    new game       time
+
+                        # 1200 x 160
+# (-600, 475)   |------------------------|(600, 475)
+            #   |                        |
+            #   |                        |
+            #   |                        |
+# (-600, 315)   |------------------------|(600, 315)
+
+    
+    # create minesweeper grid
     for i in range(NUM_ROWS):
         for j in range(NUM_COLS):
             pen.setpos(j * CELL_SIZE - 600, i * CELL_SIZE - 350)
@@ -97,26 +124,26 @@ def create_visual_board():
                 pen.right(90)
             pen.penup()
 
-    cell_opened_text.hideturtle()
-    timer_text.hideturtle()
-    timer_text.goto(0, 310)
-    timer_text.write(0, font=("Courier", 70), align="center")
+    
 
-
+# on first click the clock is started
 def start_clock():
     start = time.time()
     while running and int(time.time() - start) < 999:
         timer_text.clear()
-        timer_text.write(int(time.time() - start)+1, font=("Courier", 70), align="center")
+        timer_text.write(int(time.time() - start)+1, font=("Courier", 60), align="center")
         time.sleep(1)
 
+# when a cell is opened it updates the amount of non-bomb cells left
 def update_revealed_cells():
-    pass
+    cell_opened_text.clear()
+    cell_opened_text.write(381 - revealed_cells, font=("Courier", 60), align="center"), 
 
-
+# colors in the clicked cell and puts the right value in
+#  it with coresponding color
 def color_cell(value, row, col, color):
     x_coor, y_coor = col * CELL_SIZE - 600, -row * CELL_SIZE + 250
-    pen.goto(x_coor + 0.5, y_coor+ 0.5)
+    pen.setpos(x_coor + 0.5, y_coor+ 0.5)
     pen.color(color)
     pen.begin_fill()
     pen.setheading(90)
@@ -127,15 +154,22 @@ def color_cell(value, row, col, color):
     pen.end_fill()
     if value:
         pen.color(colors[value])
-        pen.goto(x_coor+0.5 + CELL_SIZE/2, y_coor -5)
+        pen.setpos(x_coor+0.5 + CELL_SIZE/2, y_coor -5)
         pen.write(value, font=("Courier", 30, "bold"), align="center")
 
+# if the game is won or lost time gets stopped, interactivity
+# is removed.
+# on a loss all the bombs are shown and the
+# clicked one is marked red
+# on a win all the bombs are marked green.
 def game_lost(r, c):
     global running
+    window.onclick(restart_game)
     running = False
     for row, col in bomb_locations:
         color_cell("X", row, col, "#C0C0C0")
     color_cell("X", r, c, "red")
+    
 
 def game_won():
     global running
@@ -147,11 +181,11 @@ def game_won():
 
    
     
-
+# reveal the cells
 def reveal_cell(x, y, coords=True):
     # check if a the board is clicked
     if coords:
-        if abs(x) < 50 and y > 400 and y < 500:
+        if abs(x) < 145 and 340 <= y <= 400:
             start_new_game()
             return
     if abs(x) > 600 or  y < -350 or y > 290:
@@ -184,6 +218,8 @@ def reveal_cell(x, y, coords=True):
         game_lost(row, col)
     else:
         color_cell(tile_value, row, col, "#C0C0C0")
+        revealed_cells += 1
+        update_revealed_cells()
 
     # checks if the clicked cell is a zero.
     # it will open all surrounding values if it was a zero
@@ -193,14 +229,19 @@ def reveal_cell(x, y, coords=True):
                     if not board[i][j][1]:
                         reveal_cell(i, j, False)
 
-    revealed_cells += 1
-    update_revealed_cells()
+   
     if revealed_cells == 381:
         game_won()
 
+# on win or loss removes the interactivity with the board and
+# only lets you click on the new game button
 def restart_game(x,y):
-    pass
+    if abs(x) <= 145 and 340 <= y <= 400:
+        start_new_game()
 
+
+# to start a new game it resets all the variables and removes 
+# all the visuals
 def start_new_game():
     global running, revealed_cells, board, bomb_locations, window, timer_text, cell_opened_text, pen
     running = False
@@ -208,13 +249,19 @@ def start_new_game():
     clearscreen()
     board, bomb_locations = create_bomb_board()
     pen = Turtle()
+    pen.hideturtle()
     window = Screen()
     timer_text = Turtle()
     cell_opened_text = Turtle()
+    timer_text.hideturtle()
+    cell_opened_text.hideturtle()
     create_visual_board()
     window.onclick(reveal_cell)
+
 
 start_new_game()
 
 mainloop()
+# to stop the thread running has to be turned False after 
+# mainloop is broken
 running = False
